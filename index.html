@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>小鳄鱼跳仙人掌 - 终极版</title>
+    <!-- 引入像素字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #000; /* 背景设为黑色，更有街机感 */
+            font-family: 'Courier New', Courier, monospace;
+            overflow: hidden;
+        }
+
+        /* 1. 开屏 Logo 样式 */
+        #splash-screen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: 'Press Start 2P', cursive;
+            font-size: 3rem;
+            color: #ff0000;
+            text-shadow: 4px 4px 0 #000;
+            opacity: 0;
+            z-index: 100;
+            pointer-events: none;
+            animation: splashAnim 1.5s ease-in-out forwards;
+        }
+
+        @keyframes splashAnim {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+            30% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+            50% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(2); }
+        }
+
+        /* 2. 开始按钮样式 */
+        #start-screen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 90;
+            display: none; /* 默认隐藏，等Logo播完再显示 */
+        }
+
+        #start-btn {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 1.5rem;
+            padding: 20px 40px;
+            background-color: #222;
+            color: #fff;
+            border: 4px solid #fff;
+            box-shadow: 8px 8px 0 #000;
+            cursor: pointer;
+            transition: transform 0.1s, box-shadow 0.1s;
+            outline: none;
+        }
+
+        #start-btn:hover {
+            background-color: #444;
+            transform: translate(-2px, -2px);
+            box-shadow: 10px 10px 0 #000;
+        }
+
+        #start-btn:active {
+            transform: translate(4px, 4px);
+            box-shadow: 0px 0px 0 #000;
+        }
+
+        /* 游戏主容器 */
+        #game {
+            width: 800px;
+            height: 250px;
+            border: 2px solid #333;
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(#87CEEB, #E0F6FF);
+            opacity: 0.8; /* 开始前稍微暗一点 */
+            transition: opacity 0.5s;
+        }
+        
+        #game.active {
+            opacity: 1; /* 开始后变亮 */
+        }
+
+        /* 🐊 鳄鱼 */
+        #dino {
+            width: 70px;
+            height: 60px;
+            position: absolute;
+            bottom: 0;
+            left: 50px;
+            display: flex;
+            flex-wrap: wrap;
+            z-index: 10;
+        }
+        .dino-pixel { width: 8px; height: 8px; box-sizing: border-box; }
+        .dino-pixel.green { background-color: #1e7a1e; }
+        .dino-pixel.light-green { background-color: #32cd32; }
+        .dino-pixel.black { background-color: #000; }
+        .dino-pixel.empty { background-color: transparent; }
+
+        /* 🌵 仙人掌容器 */
+        #cactus-container {
+            position: absolute;
+            bottom: 0;
+            left: 850px;
+            height: 100%;
+            display: flex;
+            align-items: flex-end;
+        }
+        
+        /* 基础仙人掌 */
+        .cactus {
+            width: 40px;
+            height: 70px;
+            display: flex;
+            flex-wrap: wrap;
+            z-index: 5;
+            margin-right: -10px; /* 重叠间距 */
+        }
+        /* 双倍高仙人掌 */
+        .cactus.tall {
+            height: 140px;
+            align-self: flex-end;
+        }
+        
+        .cactus-pixel { width: 8px; height: 8px; box-sizing: border-box; }
+        .cactus-pixel.green { background-color: #2e8b57; }
+        .cactus-pixel.dark-green { background-color: #006400; }
+        .cactus-pixel.empty { background-color: transparent; }
+
+        /* UI */
+        .score-panel {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            border: 2px solid #333;
+            padding: 5px 10px;
+            background: rgba(255,255,255,0.8);
+            z-index: 20;
+        }
+        #ground {
+            width: 100%;
+            height: 5px;
+            background-color: #666;
+            position: absolute;
+            bottom: 0;
+            z-index: 1;
+        }
+        
+        /* 云朵动画 */
+        .cloud { position: absolute; background: white; border-radius: 50%; opacity: 0.8; }
+        .cloud-group { position: absolute; top: 30px; right: -100px; animation: cloudMove 20s linear infinite; }
+        .cloud-group:nth-child(2) { top: 60px; right: -150px; animation-duration: 25s; animation-delay: 5s; transform: scale(0.8); }
+        .cloud-group:nth-child(3) { top: 40px; right: -200px; animation-duration: 30s; animation-delay: 10s; transform: scale(0.7); }
+        @keyframes cloudMove { from { right: -100px; } to { right: 900px; } }
+    </style>
+</head>
+<body>
+
+    <!-- Logo 层 -->
+    <div id="splash-screen">ALAN PRESENTS</div>
+
+    <!-- 开始按钮层 -->
+    <div id="start-screen">
+        <button id="start-btn">START GAME</button>
+    </div>
+
+    <!-- 游戏层 -->
+    <div id="game">
+        <!-- 🐊 鳄鱼模型 -->
+        <div id="dino">
+            <div class="dino-pixel empty"></div><div class="dino-pixel empty"></div><div class="dino-pixel light-green"></div><div class="dino-pixel light-green"></div><div class="dino-pixel light-green"></div><div class="dino-pixel empty"></div><div class="dino-pixel empty"></div><div class="dino-pixel empty"></div><div class="dino-pixel empty"></div>
+            <div class="dino-pixel empty"></div><div class="dino-pixel light-green"></div><div class="dino-pixel green"></div><div class="dino-pixel green"></div><div class="dino-pixel green"></div><div class="dino-pixel light-green"></div><div class="dino-pixel empty"></div><div class="dino-pixel empty"></div><div class="dino-pixel empty"></div>
+            <div class="dino-pixel light-green"></div><div class="dino-pixel green"></div><div class="dino-pixel green"></div><div class="dino-pixel black"></div><div class="dino-pixel green"></div><div class="dino-pixel green"></div><div class="dino-pixel light-green"></div><div class="dino-pixel empty"></div><div class="dino-pixel empty"></div>
+            <div class="dino-pixel light-green"></div><div class="dino-pixel green"></div><div class="dino-pixel green"></div><div class="dino-pixel green"></div><div class="dino-pixel green"></div><div class="dino-pixel green"></div><div class="dino-pixel light-green"></div><div class="dino-pixel green"></div><div class="dino-pixel empty"></div>
+            <div class="dino-pixel light-green"></div><div class="dino-pixel green"></div><div class="dino-pixel green"></div><div class="dino-pixel green"></div><div class="dino-pixel green"></div><div class="dino-pixel green"></div><div class="dino-pixel light-green"></div><div class="dino-pixel green"></div><div class="dino-pixel empty"></div>
+            <div class="dino-pixel empty"></div><div class="dino-pixel light-green"></div><div class="dino-pixel green"></div><div class="dino-pixel green"></div><div class="dino-pixel green"></div><div class="dino-pixel green"></div><div class="dino-pixel light-green"></div><div class="dino-pixel empty"></div><div class="dino-pixel empty"></div>
+            <div class="dino-pixel empty"></div><div class="dino-pixel empty"></div><div class="dino-pixel light-green"></div><div class="dino-pixel light-green"></div><div class="dino-pixel light-green"></div><div class="dino-pixel light-green"></div><div class="dino-pixel empty"></div><div class="dino-pixel empty"></div><div class="dino-pixel empty"></div>
+            <div class="dino-pixel empty"></div><div class="dino-pixel empty"></div><div class="dino-pixel light-green"></div><div class="dino-pixel light-green"></div><div class="dino-pixel light-green"></div><div class="dino-pixel light-green"></div><div class="dino-pixel empty"></div><div class="dino-pixel empty"></div><div class="dino-pixel empty"></div>
+        </div>
+
+        <!-- 🌵 仙人掌组 -->
+        <div id="cactus-container">
+            <div class="cactus" id="c1">
+                 <div class="cactus-pixel empty"></div><div class="cactus-pixel empty"></div><div class="cactus-pixel green"></div><div class="cactus-pixel empty"></div><div class="cactus-pixel empty"></div>
+                 <div class="cactus-pixel empty"></div><div class="cactus-pixel green"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel green"></div><div class="cactus-pixel empty"></div>
+                 <div class="cactus-pixel green"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel green"></div>
+                 <div class="cactus-pixel empty"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel dark-green"></div>
+                 <div class="cactus-pixel empty"></div><div class="cactus-pixel green"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel dark-green"></div>
+                 <div class="cactus-pixel empty"></div><div class="cactus-pixel empty"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel dark-green"></div>
+                 <div class="cactus-pixel empty"></div><div class="cactus-pixel empty"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel dark-green"></div>
+                 <div class="cactus-pixel empty"></div><div class="cactus-pixel green"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel dark-green"></div>
+                 <div class="cactus-pixel green"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel dark-green"></div>
+            </div>
+            <div class="cactus" id="c2">
+                 <div class="cactus-pixel empty"></div><div class="cactus-pixel empty"></div><div class="cactus-pixel green"></div><div class="cactus-pixel empty"></div><div class="cactus-pixel empty"></div>
+                 <div class="cactus-pixel empty"></div><div class="cactus-pixel green"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel green"></div><div class="cactus-pixel empty"></div>
+                 <div class="cactus-pixel green"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel green"></div>
+                 <div class="cactus-pixel empty"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel dark-green"></div>
+                 <div class="cactus-pixel empty"></div><div class="cactus-pixel green"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel dark-green"></div>
+                 <div class="cactus-pixel empty"></div><div class="cactus-pixel empty"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel dark-green"></div>
+                 <div class="cactus-pixel empty"></div><div class="cactus-pixel empty"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel dark-green"></div>
+                 <div class="cactus-pixel empty"></div><div class="cactus-pixel green"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel dark-green"></div>
+                 <div class="cactus-pixel green"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel dark-green"></div>
+            </div>
+            <div class="cactus" id="c3">
+                 <div class="cactus-pixel empty"></div><div class="cactus-pixel empty"></div><div class="cactus-pixel green"></div><div class="cactus-pixel empty"></div><div class="cactus-pixel empty"></div>
+                 <div class="cactus-pixel empty"></div><div class="cactus-pixel green"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel green"></div><div class="cactus-pixel empty"></div>
+                 <div class="cactus-pixel green"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel green"></div>
+                 <div class="cactus-pixel empty"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel dark-green"></div>
+                 <div class="cactus-pixel empty"></div><div class="cactus-pixel green"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel dark-green"></div>
+                 <div class="cactus-pixel empty"></div><div class="cactus-pixel empty"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel dark-green"></div>
+                 <div class="cactus-pixel empty"></div><div class="cactus-pixel empty"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel dark-green"></div>
+                 <div class="cactus-pixel empty"></div><div class="cactus-pixel green"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel dark-green"></div>
+                 <div class="cactus-pixel green"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel dark-green"></div><div class="cactus-pixel dark-green"></div>
+            </div>
+        </div>
+
+        <div class="score-panel">
+            <div>🏆 High Score: <span id="high-score">0</span></div>
+            <div>🎮 Current Score: <span id="current-score">0</span></div>
+        </div>
+        <div id="ground"></div>
+        
+        <!-- 装饰 -->
+        <div class="cloud-group"><div class="cloud" style="width:30px;height:30px;top:0;left:0"></div><div class="cloud" style="width:25px;height:25px;top:5px;left:20px"></div></div>
+        <div class="cloud-group"><div class="cloud" style="width:25px;height:25px;top:0;left:0"></div><div class="cloud" style="width:20px;height:20px;top:5px;left:15px"></div></div>
+    </div>
+
+    <script>
+        // --- DOM 元素获取 ---
+        const splashScreen = document.getElementById('splash-screen');
+        const startScreen = document.getElementById('start-screen');
+        const startBtn = document.getElementById('start-btn');
+        const gameContainer = document.getElementById('game');
+        const dino = document.getElementById('dino');
+        const container = document.getElementById('cactus-container');
+        const c1 = document.getElementById('c1');
+        const c2 = document.getElementById('c2');
+        const c3 = document.getElementById('c3');
+        const currentScoreElement = document.getElementById('current-score');
+        const highScoreElement = document.getElementById('high-score');
+
+        // --- 游戏状态变量 ---
+        let gameStarted = false; // 新增：控制游戏是否开始
+        let score = 0;
+        let isJumping = false;
+        let jumpHeight = 0;
+        let gameOver = false;
+        let currentObstacleCount = 1; 
+        let isTall = false;
+
+        // --- 物理参数 ---
+        let baseJumpSpeed = 20;
+        let currentJumpSpeed = baseJumpSpeed;
+        let baseGravity = 0.7;
+        let currentGravity = baseGravity;
+        
+        let baseSpeed = 5;
+        let cactusSpeed = baseSpeed;
+        const maxSpeed = baseSpeed * 2; 
+        let speedMultiplier = 1;
+
+        // --- 初始化 ---
+        let highScore = localStorage.getItem('dinoHighScore') || 0;
+        highScoreElement.textContent = highScore;
+
+        // --- 流程控制逻辑 ---
+        
+        // 1. Logo动画结束后显示开始按钮
+        setTimeout(() => {
+            splashScreen.style.display = 'none'; // 隐藏Logo
+            startScreen.style.display = 'block'; // 显示开始界面
+        }, 1600); // 对应 CSS 动画时长 1.5s
+
+        // 2. 开始按钮点击事件
+        startBtn.addEventListener('click', () => {
+            startGame();
+        });
+
+        // 支持按空格键开始
+        document.addEventListener('keydown', (e) => {
+            if ((e.code === 'Space' || e.key === ' ') && !gameStarted && !gameOver) {
+                startGame();
+            }
+        });
+
+        function startGame() {
+            if (gameStarted) return;
+            
+            gameStarted = true;
+            startScreen.style.display = 'none'; // 隐藏按钮
+            gameContainer.classList.add('active'); // 让游戏画面变亮
+            generateObstacle(); // 生成第一个障碍物
+            gameLoop(); // 启动主循环
+        }
+
+        // --- 游戏核心逻辑 (保持不变) ---
+
+        // 键盘跳跃控制
+        document.addEventListener('keydown', (e) => {
+            if ((e.code === 'Space' || e.key === ' ') && !isJumping && gameStarted && !gameOver) {
+                isJumping = true;
+                currentJumpSpeed = baseJumpSpeed * (0.8 + speedMultiplier * 0.2);
+                jump();
+            }
+        });
+
+        function jump() {
+            if (isJumping && !gameOver) {
+                jumpHeight += currentJumpSpeed;
+                dino.style.bottom = `${jumpHeight}px`;
+                currentJumpSpeed -= currentGravity;
+
+                if (jumpHeight <= 0) {
+                    jumpHeight = 0;
+                    dino.style.bottom = '0px';
+                    isJumping = false;
+                    currentJumpSpeed = baseJumpSpeed;
+                } else {
+                    requestAnimationFrame(jump);
+                }
+            }
+        }
+
+        function generateObstacle() {
+            c1.style.display = 'none';
+            c2.style.display = 'none';
+            c3.style.display = 'none';
+            c2.classList.remove('tall');
+            container.style.left = '850px';
+
+            if (score < 80) {
+                c1.style.display = 'flex';
+                currentObstacleCount = 1;
+            } else if (score < 300) {
+                if (Math.random() > 0.5) {
+                    c1.style.display = 'flex';
+                    currentObstacleCount = 1;
+                } else {
+                    c1.style.display = 'flex';
+                    c2.style.display = 'flex';
+                    currentObstacleCount = 2;
+                }
+            } else {
+                c1.style.display = 'flex';
+                c2.style.display = 'flex';
+                c3.style.display = 'flex';
+                currentObstacleCount = 3;
+                
+                if (Math.random() > 0.4) {
+                    c2.classList.add('tall');
+                    isTall = true;
+                } else {
+                    isTall = false;
+                }
+            }
+        }
+
+        // 核心修复：基于逻辑的碰撞检测
+        function checkCollision() {
+            const dinoRect = dino.getBoundingClientRect();
+            
+            // 1. 只要跳起来就不撞
+            if (dinoRect.bottom - dinoRect.top < 50) { 
+                return false;
+            }
+
+            // 2. 强制检测当前阶段应该存在的物体
+            if (checkSingleCactus(c1, dinoRect)) return true;
+            if (currentObstacleCount >= 2 && checkSingleCactus(c2, dinoRect)) return true;
+            if (currentObstacleCount === 3 && checkSingleCactus(c3, dinoRect)) return true;
+
+            return false;
+        }
+
+        function checkSingleCactus(cactus, dinoRect) {
+            const cRect = cactus.getBoundingClientRect();
+            const hitX = dinoRect.right > cRect.left + 5 && dinoRect.left < cRect.right - 5;
+            const hitY = dinoRect.bottom > cRect.top;
+            return hitX && hitY;
+        }
+
+        function gameLoop() {
+            if (gameOver) return;
+            if (!gameStarted) return; // 如果没开始，不执行循环
+
+            // 速度控制
+            let targetMultiplier = 1 + (Math.floor(score / 100) * 0.2);
+            if (targetMultiplier > 2) targetMultiplier = 2;
+            
+            if (speedMultiplier < targetMultiplier) {
+                speedMultiplier += 0.005;
+                if(speedMultiplier > targetMultiplier) speedMultiplier = targetMultiplier;
+                cactusSpeed = baseSpeed * speedMultiplier;
+                currentGravity = baseGravity * speedMultiplier * 1.1;
+            }
+
+            // 移动
+            let containerLeft = parseInt(window.getComputedStyle(container).left);
+            container.style.left = `${containerLeft - cactusSpeed}px`;
+
+            // 计分
+            if (containerLeft < -100) {
+                if (currentObstacleCount === 3 && isTall) score += 30;
+                else if (currentObstacleCount >= 2) score += 20;
+                else score += 10;
+
+                currentScoreElement.textContent = score;
+                
+                if (score > highScore) {
+                    highScore = score;
+                    highScoreElement.textContent = highScore;
+                    localStorage.setItem('dinoHighScore', highScore);
+                }
+                
+                generateObstacle();
+            }
+
+            // 碰撞检测
+            if (checkCollision()) {
+                gameOver = true;
+                setTimeout(() => {
+                    alert(`Game Over!\nScore: ${score}\nHigh Score: ${highScore}`);
+                    window.location.reload(true); // 刷新页面重来
+                }, 50);
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+    </script>
+</body>
+</html>
