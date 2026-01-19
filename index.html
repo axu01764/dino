@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>小鳄鱼跳仙人掌 - 终极版</title>
+    <title>小鳄鱼跳仙人掌 - ALAN倾情呈现</title>
     <!-- 引入像素字体 -->
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
@@ -15,6 +15,7 @@
             background-color: #000; /* 背景设为黑色，更有街机感 */
             font-family: 'Courier New', Courier, monospace;
             overflow: hidden;
+            touch-action: none; /* 禁用移动端默认的触摸行为（如缩放） */
         }
 
         /* 1. 开屏 Logo 样式 */
@@ -85,6 +86,7 @@
             background: linear-gradient(#87CEEB, #E0F6FF);
             opacity: 0.8; /* 开始前稍微暗一点 */
             transition: opacity 0.5s;
+            touch-action: none; /* 禁用游戏区域的默认触摸行为 */
         }
         
         #game.active {
@@ -166,6 +168,21 @@
         .cloud-group:nth-child(2) { top: 60px; right: -150px; animation-duration: 25s; animation-delay: 5s; transform: scale(0.8); }
         .cloud-group:nth-child(3) { top: 40px; right: -200px; animation-duration: 30s; animation-delay: 10s; transform: scale(0.7); }
         @keyframes cloudMove { from { right: -100px; } to { right: 900px; } }
+
+        /* 移动端适配 */
+        @media (max-width: 800px) {
+            #game {
+                width: 100vw; /* 占满手机屏幕宽度 */
+                height: calc(100vw * 0.3125); /* 保持 800:250 的比例 */
+            }
+            #splash-screen {
+                font-size: 1.8rem; /* 缩小移动端Logo字体 */
+            }
+            #start-btn {
+                font-size: 1rem;
+                padding: 15px 30px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -278,6 +295,22 @@
         let highScore = localStorage.getItem('dinoHighScore') || 0;
         highScoreElement.textContent = highScore;
 
+        // --- 核心交互函数（统一所有操作逻辑）---
+        function handleJump() {
+            // 1. 未开始游戏：点击/空格/鼠标左键 启动游戏
+            if (!gameStarted && !gameOver) {
+                startGame();
+                return;
+            }
+
+            // 2. 游戏中：未跳跃且未结束，触发跳跃
+            if (!isJumping && gameStarted && !gameOver) {
+                isJumping = true;
+                currentJumpSpeed = baseJumpSpeed * (0.8 + speedMultiplier * 0.2);
+                jump();
+            }
+        }
+
         // --- 流程控制逻辑 ---
         
         // 1. Logo动画结束后显示开始按钮
@@ -287,16 +320,7 @@
         }, 1600); // 对应 CSS 动画时长 1.5s
 
         // 2. 开始按钮点击事件
-        startBtn.addEventListener('click', () => {
-            startGame();
-        });
-
-        // 支持按空格键开始
-        document.addEventListener('keydown', (e) => {
-            if ((e.code === 'Space' || e.key === ' ') && !gameStarted && !gameOver) {
-                startGame();
-            }
-        });
+        startBtn.addEventListener('click', startGame);
 
         function startGame() {
             if (gameStarted) return;
@@ -308,17 +332,31 @@
             gameLoop(); // 启动主循环
         }
 
-        // --- 游戏核心逻辑 (保持不变) ---
-
-        // 键盘跳跃控制
+        // --- 多端交互绑定 ---
+        // 1. 空格键（原有）
         document.addEventListener('keydown', (e) => {
-            if ((e.code === 'Space' || e.key === ' ') && !isJumping && gameStarted && !gameOver) {
-                isJumping = true;
-                currentJumpSpeed = baseJumpSpeed * (0.8 + speedMultiplier * 0.2);
-                jump();
+            if (e.code === 'Space' || e.key === ' ') {
+                e.preventDefault(); // 阻止默认滚动行为
+                handleJump();
             }
         });
 
+        // 2. 鼠标左键点击（电脑端）
+        document.addEventListener('click', (e) => {
+            // 排除点击开始按钮的情况（避免重复触发）
+            if (e.target === startBtn) return;
+            handleJump();
+        });
+
+        // 3. 移动端触摸（手机/平板）
+        document.addEventListener('touchstart', (e) => {
+            e.preventDefault(); // 阻止默认触摸行为（如缩放、滚动）
+            // 排除触摸开始按钮的情况
+            if (e.target === startBtn) return;
+            handleJump();
+        }, { passive: false }); // 必须设置 passive: false 才能调用 preventDefault
+
+        // --- 游戏核心逻辑 (保持不变) ---
         function jump() {
             if (isJumping && !gameOver) {
                 jumpHeight += currentJumpSpeed;
